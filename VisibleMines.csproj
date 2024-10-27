@@ -1,9 +1,9 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net472</TargetFramework>
-    <AssemblyName>VisibleHazards</AssemblyName>
-    <Product>SPT Visible Hazards mod</Product>
+    <AssemblyName>VisibleMines</AssemblyName>
+    <Product>SPT Visible Mines mod</Product>
     <Version>0.0.1</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>latest</LangVersion>
@@ -12,7 +12,7 @@
       https://nuget.bepinex.dev/v3/index.json;
       https://nuget.samboy.dev/v3/index.json
     </RestoreAdditionalProjectSources>
-    <RootNamespace>VisibleHazards</RootNamespace>
+    <RootNamespace>VisibleMines</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
