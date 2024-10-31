@@ -49,11 +49,16 @@ namespace VisibleHazards.Patches
                     if (Physics.Raycast(spawnPoint, Vector3.down, out hit, 250f, LayerMaskClass.TerrainLowPoly))
                     {
                         // create mine
-                        Vector3 placePos = hit.point - hit.normal * Plugin.landminePosOffset.Value;
+                        Vector3 placePos = hit.point;
                         GameObject landMine = GameObject.Instantiate(BundleHelper.Landmine_PMN2_Prefab, placePos, Quaternion.FromToRotation(Vector3.up, hit.normal));
 
                         // add component
                         Landmine landmineComponent = landMine.AddComponent<Landmine>();
+
+                        // rotate the mine and move it into the ground
+                        Transform modelGameObject = landMine.transform.Find("Model"); // weird!!!
+                        modelGameObject.localPosition -= new Vector3(0, Plugin.landminePosOffset.Value, 0);
+                        modelGameObject.localRotation = Quaternion.Euler(0, Random.Range(0, 360), 0);
                     }
                 }
             }

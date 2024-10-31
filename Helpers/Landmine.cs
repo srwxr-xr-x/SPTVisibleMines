@@ -2,8 +2,10 @@
 using EFT;
 using EFT.Ballistics;
 using System.Collections.Generic;
+using System.Linq;
 using Systems.Effects;
 using UnityEngine;
+using VisibleMines.Patches;
 
 namespace VisibleHazards.Components
 {
@@ -18,11 +20,72 @@ namespace VisibleHazards.Components
         public List<EBodyPart> targetBodyParts;
     }
 
-    public static class Explosion
+    public class PlayerExplosionInfo
     {
+        // weird
+        private EBodyPart[] _fracturableLimbs = 
+        [
+            EBodyPart.RightArm,
+            EBodyPart.LeftArm,
+            EBodyPart.RightLeg,
+            EBodyPart.LeftLeg
+        ];
+
+        public float playerDistance;
+        public HashSet<EBodyPart> processedLimbs;
+        public Dictionary<EBodyPart, float> limbDistances;
+
+        public PlayerExplosionInfo(float _playerDistance)
+        {
+            this.playerDistance = _playerDistance;
+            processedLimbs = new HashSet<EBodyPart>();
+            limbDistances = new Dictionary<EBodyPart, float>();
+        }
+
+        public EBodyPart GetClosestBodyPart()
+        {
+            return limbDistances.Aggregate((a, b) =>
+            {
+                return a.Value < b.Value ? a : b;
+            }).Key;
+        }
+
+        public EBodyPart GetClosestFracturableBodyPart()
+        {
+            return limbDistances
+                .Where(x => _fracturableLimbs.Contains(x.Key))
+                .Aggregate((a, b) =>
+            {
+                return a.Value < b.Value ? a : b;
+            }).Key;
+        }
+    }
+
+    public class Explosion
+    {
+        private static (Player, EBodyPart) GetClosestPlayerAndLimb(Dictionary<Player, PlayerExplosionInfo> _players)
+        {
+            Player closestPlayer = null;
+            float closestDistance = float.MaxValue;
+
+            foreach (KeyValuePair<Player, PlayerExplosionInfo> playerInfo in _players)
+            {
+                if (playerInfo.Value.playerDistance < closestDistance)
+                {
+                    closestPlayer = playerInfo.Key;
+                    closestDistance = playerInfo.Value.playerDistance;
+                }
+            }
+
+            EBodyPart closestLimb = closestPlayer == null ? default : _players[closestPlayer].GetClosestFracturableBodyPart();
+
+            return (closestPlayer, closestLimb);
+        }
+
         public static void CreateLandmineExplosion(ExplosionData explosion)
         {
-            Dictionary<Player, HashSet<EBodyPart>> processedPlayers = new Dictionary<Player, HashSet<EBodyPart>>();
+            // processed limbs for players
+            Dictionary<Player, PlayerExplosionInfo> processedPlayers = new Dictionary<Player, PlayerExplosionInfo>();
 
             // effect
             Singleton<Effects>.Instance.EmitGrenade(explosion.effectName, explosion.position, Vector3.up, 1f);
@@ -51,17 +114,18 @@ namespace VisibleHazards.Components
                 float colliderDistMult = Mathf.Pow(Mathf.Clamp01(1f - (colliderDistToExplosion / explosion.distance)), explosion.damageDropoffMult);
 
                 bool playerProcessedExists = processedPlayers.ContainsKey(player);
+
                 // if first damage
                 if (!playerProcessedExists)
                 {
-                    processedPlayers.Add(player, new HashSet<EBodyPart>());
+                    processedPlayers.Add(player, new PlayerExplosionInfo(playerDistToExplosion));
 
                     player.ActiveHealthController.DoContusion(25f * distanceMult, distanceMult);
                     player.ActiveHealthController.DoDisorientation(5f * distanceMult);
-                    player.ProceduralWeaponAnimation.ForceReact.AddForce(dirNormalized, distanceMult * 2, 1f, 2f);
+                    player.ProceduralWeaponAnimation.ForceReact.AddForce(dirNormalized, distanceMult * 1.5f, 1f, 1f);
                 }
 
-                if (explosion.targetBodyParts.Contains(bodyPart) && !processedPlayers[player].Contains(bodyPart))
+                if (explosion.targetBodyParts.Contains(bodyPart) && !processedPlayers[player].processedLimbs.Contains(bodyPart))
                 {
                     DamageInfo dmgInfo = new DamageInfo()
                     {
@@ -78,14 +142,27 @@ namespace VisibleHazards.Components
                         LightBleedingDelta = Plugin.landmineLightBleedDelta.Value
                     };
 
+                    // ignore fractures when applying damage
+                    DoFracturePatch.SetIgnoreNextFracture(true);
                     player.ApplyDamageInfo(dmgInfo, bodyPart, colliderType, 0.0f);
+                    DoFracturePatch.SetIgnoreNextFracture(false);
+
+                    // only add parts that can be fractured (this will be important later!)
+                    if (bodyPart != EBodyPart.Chest || bodyPart != EBodyPart.Stomach || bodyPart != EBodyPart.Head)
+                    {
+                        processedPlayers[player].limbDistances.Add(bodyPart, distanceMult);
+                    }
 
                     //Plugin.Logger.LogInfo($"{bodyPart} {explosion.damage * distanceMult}");
                 }
 
-                processedPlayers[player].Add(bodyPart);
+                processedPlayers[player].processedLimbs.Add(bodyPart);
             }
-        } 
+
+            (Player, EBodyPart) closestPlayerInfo = GetClosestPlayerAndLimb(processedPlayers);
+            closestPlayerInfo.Item1.ActiveHealthController.DoFracture(closestPlayerInfo.Item2);
+            Plugin.Logger.LogInfo(closestPlayerInfo.Item2);
+        }
     }
 
     /*

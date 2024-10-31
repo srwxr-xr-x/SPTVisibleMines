@@ -3,10 +3,11 @@ using BepInEx.Configuration;
 using BepInEx.Logging;
 using VisibleHazards.Helpers;
 using VisibleHazards.Patches;
+using VisibleMines.Patches;
 
 namespace VisibleHazards
 {
-    [BepInPlugin("com.pein.visiblemines", "PeinVisibleMines", "1.0.0")]
+    [BepInPlugin("com.pein.visiblemines", "PeinVisibleMines", "1.0.1")]
     public class Plugin : BaseUnityPlugin
     {
         // Landmines
@@ -107,6 +108,7 @@ namespace VisibleHazards
             MapConfig.LoadMapConfig();
             BundleHelper.LoadAssets();
 
+            new DoFracturePatch().Enable();
             new OnGameStartedPatch().Enable();
         }
     }
