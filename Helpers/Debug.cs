@@ -19,16 +19,19 @@ namespace VisibleMines.Helpers
 
         public static void LogInfo(string message)
         {
+            if (!Plugin.debugEnabled.Value) return;
             Logger?.LogInfo(message);
         }
 
         public static void LogWarning(string message)
         {
+            if (!Plugin.debugEnabled.Value) return;
             Logger?.LogWarning(message);
         }
 
         public static void LogError(string message)
         {
+            if (!Plugin.debugEnabled.Value) return;
             Logger?.LogError(message);
         }
     }

@@ -3,7 +3,7 @@ using System.IO;
 using System.Reflection;
 using UnityEngine;
 
-namespace VisibleHazards.Helpers
+namespace VisibleMines.Helpers
 {
     public class BundleHelper
     {
@@ -21,11 +21,11 @@ namespace VisibleHazards.Helpers
                 LandmineBundle = AssetBundle.LoadFromFile(path);
                 Landmine_PMN2_Prefab = (GameObject)LandmineBundle.LoadAsset("Landmine_PMN2_Prefab");
                 //Claymore_MON50_Prefab = (GameObject)LandmineBundle.LoadAsset("Claymore_MON50_Prefab");
-                Plugin.Logger.LogInfo("Successfully loaded assets!");
+                VisibleMines.Helpers.Debug.LogInfo("Successfully loaded assets!");
             }
             catch (Exception ex) 
             {
-                Plugin.Logger.LogError("Failed to load landmineassets.bundle due to.. whatever reason.");
+                VisibleMines.Helpers.Debug.LogInfo("Failed to load landmineassets.bundle due to.. whatever reason.");
             }
         }
     }

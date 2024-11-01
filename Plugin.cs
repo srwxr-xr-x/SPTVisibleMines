@@ -1,14 +1,12 @@
 ﻿using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
-using VisibleHazards.Helpers;
-using VisibleHazards.Patches;
 using VisibleMines.Helpers;
 using VisibleMines.Patches;
 
-namespace VisibleHazards
+namespace VisibleMines
 {
-    [BepInPlugin("com.pein.visiblemines", "Visible Minefields", "1.0.1")]
+    [BepInPlugin("com.pein.visiblemines", "Visible Minefields", "1.1.0")]
     public class Plugin : BaseUnityPlugin
     {
         // Landmines
@@ -20,6 +18,7 @@ namespace VisibleHazards
         public static ConfigEntry<float> landmineLightBleedDelta { get; set; }
         public static ConfigEntry<float> landmineHeavyBleedDelta { get; set; }
         public static ConfigEntry<float> landmineFractureDelta { get; set; }
+        public static ConfigEntry<float> landmineStaminaBurnRate { get; set; }
 
         // Screen shake
         public static ConfigEntry<float> screenShakeIntensityAmount { get; set; }
@@ -38,8 +37,6 @@ namespace VisibleHazards
         public static ConfigEntry<float> claymoreDamageArmorMult { get; set; }
         public static ConfigEntry<float> claymoreDamageAngle { get; set; }
         */
-
-        public static new ManualLogSource Logger;
 
         private void Awake()
         {
@@ -80,7 +77,7 @@ namespace VisibleHazards
                     new ConfigurationManagerAttributes() { Order = 960 }
                 ));
 
-            landmineLightBleedDelta = Config.Bind(mineCategory, "Landmine Light Chance", 0.5f, new ConfigDescription(
+            landmineLightBleedDelta = Config.Bind(mineCategory, "Landmine Light Chance", 0.4f, new ConfigDescription(
                     "Changes the chance for a bleed to occur after an explosion. Chance is calculated per limb. Affected by limb distance from explosion.",
                     new AcceptableValueRange<float>(0f, 1f),
                     new ConfigurationManagerAttributes() { Order = 950 }
@@ -98,29 +95,35 @@ namespace VisibleHazards
                     new ConfigurationManagerAttributes() { Order = 930 }
                 ));
 
+            landmineStaminaBurnRate = Config.Bind(mineCategory, "Landmine Stamina Burn Rate", 1.0f, new ConfigDescription(
+                    "Changes the chance for a fracture to occur after an explosion. Fractures appear on the limb closest to the explosion. Affected by limb distance from the explosion.",
+                    null,
+                    new ConfigurationManagerAttributes() { Order = 929 }
+                ));
+
             // Explosion screen shake settings
             screenShakeIntensityAmount = Config.Bind(visualCategory, "Overall Shake Intensity", 1.0f, new ConfigDescription(
                     "Changes the overall shake intensity.",
                     null,
-                    new ConfigurationManagerAttributes() { Order = 930 }
+                    new ConfigurationManagerAttributes() { Order = 920 }
                 ));
 
             screenShakeIntensityWeapon = Config.Bind(visualCategory, "Weapon Shake Intensity", 0.25f, new ConfigDescription(
                     "Changes the weapon shake intensity.",
                     null,
-                    new ConfigurationManagerAttributes() { Order = 920 }
+                    new ConfigurationManagerAttributes() { Order = 910 }
                 ));
 
             screenShakeIntensityCamera = Config.Bind(visualCategory, "Camera Shake Intensity", 1.0f, new ConfigDescription(
                     "Changes the camera shake intensity.",
                     null,
-                    new ConfigurationManagerAttributes() { Order = 910 }
+                    new ConfigurationManagerAttributes() { Order = 900 }
                 ));
 
             debugEnabled = Config.Bind(debugCategory, "Enable Debug", false, new ConfigDescription(
                     "Enables debug mode",
                     null,
-                    new ConfigurationManagerAttributes() { Order = 900 }
+                    new ConfigurationManagerAttributes() { Order = 890, IsAdvanced = true }
                 ));
 
             // Claymores

@@ -1,13 +1,13 @@
 ﻿using SPT.Reflection.Patching;
 using System.Reflection;
 using EFT;
-using VisibleHazards.Helpers;
 using UnityEngine;
 using EFT.Interactive;
 using System.Collections.Generic;
-using VisibleHazards.Components;
+using VisibleMines.Components;
+using VisibleMines.Helpers;
 
-namespace VisibleHazards.Patches
+namespace VisibleMines.Patches
 {
     public class OnGameStartedPatch : ModulePatch
     {
@@ -20,6 +20,12 @@ namespace VisibleHazards.Patches
         private static void PatchPostFix(GameWorld __instance)
         {
             List<MinefieldData> minefieldList = MapConfig.GetMapData(__instance.MainPlayer.Location);
+            if (minefieldList == null)
+            {
+                Helpers.Debug.LogWarning($"Couldn't find {__instance.MainPlayer.Location}.");
+                return;
+            }
+
             MineDirectional[] mineDirectionalList = GameObject.FindObjectsOfType<MineDirectional>();
 
             // MINEFIELDS
@@ -28,7 +34,7 @@ namespace VisibleHazards.Patches
                 GameObject mineField = GameObject.Find(field.minefieldName);
                 if (mineField == null)
                 {
-                    Plugin.Logger.LogError($"Couldn't find {field.minefieldName}.");
+                    Helpers.Debug.LogError($"Couldn't find {field.minefieldName}.");
                     continue;
                 }
 

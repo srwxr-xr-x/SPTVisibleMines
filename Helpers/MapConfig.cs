@@ -2,11 +2,11 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 
-namespace VisibleHazards.Helpers
+namespace VisibleMines.Helpers
 {
-
     public struct MinefieldData
     {
         public string minefieldName { get; set; }
@@ -32,7 +32,7 @@ namespace VisibleHazards.Helpers
             string path = $"{folder}\\mapconfig.json";
 
             // does the damn file exist?
-            if (!File.Exists(path)) { Plugin.Logger.LogError("Failed to load mapconfig.json"); return; }
+            if (!File.Exists(path)) { Debug.LogError("Failed to load mapconfig.json"); return; }
 
             JObject json;
             try
@@ -41,7 +41,7 @@ namespace VisibleHazards.Helpers
             }
             catch (Exception ex)
             {
-                Plugin.Logger.LogError("Failed to parse mapconfig.json!");
+                Debug.LogError("Failed to parse mapconfig.json!");
                 return;
             }
 
@@ -50,19 +50,27 @@ namespace VisibleHazards.Helpers
                 var mapName = map.Key;
                 var mapMinefields = map.Value;
 
-                minefieldData[mapName] = new List<MinefieldData>();
+                if (!LocationSettingsClass.Location.AvailableMaps.Contains(mapName))
+                {
+                    Helpers.Debug.LogError($"failed to load map {mapName}");
+                    continue;
+                }
 
+                minefieldData[mapName] = new List<MinefieldData>();
                 foreach (var minefield in mapMinefields)
                 {
+
                     string name = (string)minefield["name"];
                     int maxMineCount = (int)minefield["maxMineCount"];
                     float minDistanceBetweenMines = (float)minefield["minDistanceBetweenMines"];
 
                     minefieldData[mapName].Add(new MinefieldData(name, maxMineCount, minDistanceBetweenMines));
+
+                    Helpers.Debug.LogInfo($"loaded minefield {name} for {mapName}!");
                 }
             }
 
-            Plugin.Logger.LogInfo($"LOADED MINEFIELDS FOR {minefieldData.Count} MAPS");
+            Debug.LogInfo($"LOADED MINEFIELDS FOR {minefieldData.Count} MAPS");
         }
 
         public static List<MinefieldData> GetMapData(string mapName)

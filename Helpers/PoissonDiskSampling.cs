@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
-namespace VisibleHazards.Helpers
+namespace VisibleMines.Helpers
 {
     public static class PoissonDiskSampling
     {

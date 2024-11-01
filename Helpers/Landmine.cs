@@ -5,9 +5,10 @@ using System.Collections.Generic;
 using System.Linq;
 using Systems.Effects;
 using UnityEngine;
+using VisibleMines.Helpers;
 using VisibleMines.Patches;
 
-namespace VisibleHazards.Components
+namespace VisibleMines.Components
 {
     public struct ExplosionData
     {
@@ -108,6 +109,7 @@ namespace VisibleHazards.Components
 
                 // GO AWAY DONT LOOK AT THIS!!!!
                 // todo: optimize all this.
+                /*
                 Vector3 colliderPos = collider.transform.position;
                 Vector3 dir = colliderPos - explosion.position;
                 Vector3 dirNormalized = dir.normalized;
@@ -115,34 +117,53 @@ namespace VisibleHazards.Components
                 float playerDistToExplosion = (player.Position - explosion.position).magnitude;
                 float distanceMult = Mathf.Clamp01(1f - (playerDistToExplosion / explosion.maxDistance));
                 float colliderDistMult = Mathf.Pow(Mathf.Clamp01(1f - (colliderDistToExplosion / explosion.maxDistance)), explosion.damageDropoffMult);
+                */
+
+                // collider
+                Vector3 colliderPos = collider.transform.position;
+                Vector3 colliderDirToExplosion = explosion.position - colliderPos;
+                float colliderDistance = colliderDirToExplosion.magnitude;
+
+                // player
+                Vector3 playerDirToExplosion = bodyPartCollider.playerBridge.iPlayer.Position - explosion.position;
+                float playerDistance = playerDirToExplosion.magnitude;
+                float playerDistanceMult = 1 - Mathf.Clamp01(playerDistance / colliderDistance);
+
+                // damage
+                float distanceMultiplier = Mathf.Clamp01(1f - (colliderDistance / explosion.maxDistance));
+                float finalDamage = explosion.damage * Mathf.Pow(distanceMultiplier, explosion.damageDropoffMult);
 
                 bool playerProcessedExists = processedPlayers.ContainsKey(player);
 
                 // if first damage
                 if (!playerProcessedExists)
                 {
+                    float playerDistToExplosion = playerDirToExplosion.magnitude;
                     processedPlayers.Add(player, new PlayerExplosionInfo(playerDistToExplosion));
 
-                    player.ActiveHealthController.DoContusion(25f * distanceMult, distanceMult);
-                    player.ActiveHealthController.DoDisorientation(5f * distanceMult);
-                    player.ProceduralWeaponAnimation.ForceReact.AddForce(dirNormalized, distanceMult * Plugin.screenShakeIntensityAmount.Value, Plugin.screenShakeIntensityWeapon.Value, Plugin.screenShakeIntensityCamera.Value);
+                    player.ActiveHealthController.DoContusion(20f * playerDistanceMult, playerDistanceMult);
+                    player.ActiveHealthController.DoDisorientation(5f * playerDistanceMult);
+                    player.ProceduralWeaponAnimation.ForceReact.AddForce(playerDirToExplosion.normalized, playerDistanceMult * Plugin.screenShakeIntensityAmount.Value, Plugin.screenShakeIntensityWeapon.Value, Plugin.screenShakeIntensityCamera.Value);
                 }
 
                 if (explosion.targetBodyParts.Contains(bodyPart) && !processedPlayers[player].processedLimbs.Contains(bodyPart))
                 {
+                    Helpers.Debug.LogInfo($"Processing body part {bodyPart}, collider distance {colliderDistance}");
+
                     DamageInfo dmgInfo = new DamageInfo()
                     {
                         DamageType = EDamageType.Landmine,
-                        Damage = explosion.damage * colliderDistMult,
+                        Damage = finalDamage,
                         ArmorDamage = 0.35f,
                         PenetrationPower = 25,
-                        Direction = dirNormalized,
-                        HitNormal = -dirNormalized,
+                        Direction = colliderDirToExplosion,
+                        HitNormal = -colliderDirToExplosion,
                         HitPoint = colliderPos,
                         Player = null,
                         Weapon = null,
                         HeavyBleedingDelta = Plugin.landmineHeavyBleedDelta.Value,
-                        LightBleedingDelta = Plugin.landmineLightBleedDelta.Value
+                        LightBleedingDelta = Plugin.landmineLightBleedDelta.Value,
+                        StaminaBurnRate = Plugin.landmineStaminaBurnRate.Value
                     };
 
                     // ignore fractures when applying damage
@@ -153,20 +174,17 @@ namespace VisibleHazards.Components
                     // only add parts that can be fractured (this will be important later!)
                     if (bodyPart != EBodyPart.Chest || bodyPart != EBodyPart.Stomach || bodyPart != EBodyPart.Head)
                     {
-                        processedPlayers[player].limbDistances.Add(bodyPart, colliderDistToExplosion);
+                        processedPlayers[player].limbDistances.Add(bodyPart, colliderDistance);
                     }
                 }
 
                 processedPlayers[player].processedLimbs.Add(bodyPart);
             }
 
-            // problematic
-            (Player, EBodyPart) closestPlayerInfo = GetClosestPlayerAndLimb(processedPlayers);
-            Player closestPlayer = closestPlayerInfo.Item1;
-            EBodyPart closestBodyPart = closestPlayerInfo.Item2;
-            float distMult = 1 - Mathf.Clamp01(processedPlayers[closestPlayer].GetLimbDistance(closestBodyPart) / explosion.maxDistance);
+            (Player closestPlayer, EBodyPart closestBodyPart) = GetClosestPlayerAndLimb(processedPlayers);
+            float distanceFromExplosion = (closestPlayer.Position - explosion.position).magnitude;
 
-            if (Random.Range(0f, 1f) < Plugin.landmineFractureDelta.Value * distMult)
+            if (distanceFromExplosion < 1f && Random.Range(0f, 1f) < Plugin.landmineFractureDelta.Value)
             {
                 closestPlayer.ActiveHealthController.DoFracture(closestBodyPart);
             }
@@ -246,7 +264,7 @@ namespace VisibleHazards.Components
                 damageDropoffMult = Plugin.landmineDamageDropoffMult.Value,
                 maxDistance = Plugin.landmineExplosionRange.Value,
                 targetBodyParts = new List<EBodyPart>
-                { 
+                {
                     EBodyPart.RightLeg,
                     EBodyPart.LeftLeg,
                     EBodyPart.Stomach,
@@ -267,7 +285,7 @@ namespace VisibleHazards.Components
 
         public virtual void Awake()
         {
-            //Plugin.Logger.LogInfo($"Created {this.name} at {this.gameObject.transform.position}");
+            //Debug.LogInfo($"Created {this.name} at {this.gameObject.transform.position}");
             CreateBallisticCollider();
         }
 
