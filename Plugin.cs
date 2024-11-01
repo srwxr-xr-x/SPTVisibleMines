@@ -3,11 +3,12 @@ using BepInEx.Configuration;
 using BepInEx.Logging;
 using VisibleHazards.Helpers;
 using VisibleHazards.Patches;
+using VisibleMines.Helpers;
 using VisibleMines.Patches;
 
 namespace VisibleHazards
 {
-    [BepInPlugin("com.pein.visiblemines", "PeinVisibleMines", "1.0.1")]
+    [BepInPlugin("com.pein.visiblemines", "Visible Minefields", "1.0.1")]
     public class Plugin : BaseUnityPlugin
     {
         // Landmines
@@ -18,7 +19,16 @@ namespace VisibleHazards
         public static ConfigEntry<float> landmineDamageArmorMult { get; set; }
         public static ConfigEntry<float> landmineLightBleedDelta { get; set; }
         public static ConfigEntry<float> landmineHeavyBleedDelta { get; set; }
-        
+        public static ConfigEntry<float> landmineFractureDelta { get; set; }
+
+        // Screen shake
+        public static ConfigEntry<float> screenShakeIntensityAmount { get; set; }
+        public static ConfigEntry<float> screenShakeIntensityWeapon { get; set; }
+        public static ConfigEntry<float> screenShakeIntensityCamera { get; set; }
+
+        // Debug
+        public static ConfigEntry<bool> debugEnabled { get; set; }
+
 
         // Claymores
         /*
@@ -33,49 +43,84 @@ namespace VisibleHazards
 
         private void Awake()
         {
-            Logger = base.Logger;
+            Debug.SetLogger(Logger);
 
-            // Landmines
-            landminePosOffset = Config.Bind("1. Landmines", "Landmine Pos Offset", 0.01f, new ConfigDescription(
+            string mineCategory = "1. Landmines";
+            string visualCategory = "2. Screen Shake";
+            string debugCategory = "3. Debug";
+
+            // Landmine settings
+            landminePosOffset = Config.Bind(mineCategory, "Landmine Pos Offset", 0.01f, new ConfigDescription(
                     "Changes the up/down offset of landmines. Higher values spawn the mines lower into the ground, making them more difficult to spot. Low values may make the mines float slightly off the ground.",
                     new AcceptableValueRange<float>(0.01f, 0.2f),
-                    new ConfigurationManagerAttributes() { Order = 1000, IsAdvanced = true }
+                    new ConfigurationManagerAttributes() { Order = 1000 }
                 ));
 
-            landmineDamage = Config.Bind("1. Landmines", "Landmine Damage", 100f, new ConfigDescription(
+            landmineDamage = Config.Bind(mineCategory, "Landmine Damage", 100f, new ConfigDescription(
                     "Changes the damage of landmines.",
                     null,
                     new ConfigurationManagerAttributes() { Order = 990 }
                 ));
 
-            landmineExplosionRange = Config.Bind("1. Landmines", "Landmine Explosion Radius", 5f, new ConfigDescription(
+            landmineExplosionRange = Config.Bind(mineCategory, "Landmine Explosion Radius", 5f, new ConfigDescription(
                     "Changes the explosion radius of landmines.",
                     null,
                     new ConfigurationManagerAttributes() { Order = 980 }
                 ));
 
-            landmineDamageDropoffMult = Config.Bind("1. Landmines", "Landmine Damage Dropoff Exponent", 5, new ConfigDescription(
+            landmineDamageDropoffMult = Config.Bind(mineCategory, "Landmine Damage Dropoff Exponent", 5, new ConfigDescription(
                     "Changes the landmine damage dropoff exponent.",
                     null,
                     new ConfigurationManagerAttributes() { Order = 970 }
                 ));
 
-            landmineDamageArmorMult = Config.Bind("1. Landmines", "Landmine Armor Damage Multiplier", 0.35f, new ConfigDescription(
+            landmineDamageArmorMult = Config.Bind(mineCategory, "Landmine Armor Damage Multiplier", 0.35f, new ConfigDescription(
                     "Changes the armor damage multiplier of landmines.",
                     new AcceptableValueRange<float>(0.01f, 1f),
                     new ConfigurationManagerAttributes() { Order = 960 }
                 ));
 
-            landmineLightBleedDelta = Config.Bind("1. Landmines", "Landmine Light Bleed Delta", 0.5f, new ConfigDescription(
-                    "Changes the chance for a bleed to occur after an explosion. Affected by limb distance from explosion.",
-                    null,
+            landmineLightBleedDelta = Config.Bind(mineCategory, "Landmine Light Chance", 0.5f, new ConfigDescription(
+                    "Changes the chance for a bleed to occur after an explosion. Chance is calculated per limb. Affected by limb distance from explosion.",
+                    new AcceptableValueRange<float>(0f, 1f),
                     new ConfigurationManagerAttributes() { Order = 950 }
                 ));
 
-            landmineHeavyBleedDelta = Config.Bind("1. Landmines", "Landmine Heavy Bleed Delta", 0.2f, new ConfigDescription(
-                    "Changes the chance for a bleed to occur after an explosion. Affected by limb distance from explosion.",
-                    null,
+            landmineHeavyBleedDelta = Config.Bind(mineCategory, "Landmine Heavy Chance", 0.2f, new ConfigDescription(
+                    "Changes the chance for a bleed to occur after an explosion. Chance is calculated per limb. Affected by limb distance from explosion.",
+                    new AcceptableValueRange<float>(0f, 1f),
                     new ConfigurationManagerAttributes() { Order = 940 }
+                ));
+
+            landmineFractureDelta = Config.Bind(mineCategory, "Landmine Fracture Chance", 1.0f, new ConfigDescription(
+                    "Changes the chance for a fracture to occur after an explosion. Fractures appear on the limb closest to the explosion. Affected by limb distance from the explosion.",
+                    new AcceptableValueRange<float>(0f, 1f),
+                    new ConfigurationManagerAttributes() { Order = 930 }
+                ));
+
+            // Explosion screen shake settings
+            screenShakeIntensityAmount = Config.Bind(visualCategory, "Overall Shake Intensity", 1.0f, new ConfigDescription(
+                    "Changes the overall shake intensity.",
+                    null,
+                    new ConfigurationManagerAttributes() { Order = 930 }
+                ));
+
+            screenShakeIntensityWeapon = Config.Bind(visualCategory, "Weapon Shake Intensity", 0.25f, new ConfigDescription(
+                    "Changes the weapon shake intensity.",
+                    null,
+                    new ConfigurationManagerAttributes() { Order = 920 }
+                ));
+
+            screenShakeIntensityCamera = Config.Bind(visualCategory, "Camera Shake Intensity", 1.0f, new ConfigDescription(
+                    "Changes the camera shake intensity.",
+                    null,
+                    new ConfigurationManagerAttributes() { Order = 910 }
+                ));
+
+            debugEnabled = Config.Bind(debugCategory, "Enable Debug", false, new ConfigDescription(
+                    "Enables debug mode",
+                    null,
+                    new ConfigurationManagerAttributes() { Order = 900 }
                 ));
 
             // Claymores
