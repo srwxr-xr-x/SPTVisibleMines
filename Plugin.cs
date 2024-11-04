@@ -6,7 +6,7 @@ using VisibleMines.Patches;
 
 namespace VisibleMines
 {
-    [BepInPlugin("com.pein.visiblemines", "Visible Minefields", "1.1.0")]
+    [BepInPlugin("com.pein.visiblemines", "Visible Minefields", "1.1.1")]
     public class Plugin : BaseUnityPlugin
     {
         // Landmines
