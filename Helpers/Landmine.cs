@@ -107,18 +107,6 @@ namespace VisibleMines.Components
                 EBodyPart bodyPart = bodyPartCollider.BodyPartType;
                 EBodyPartColliderType colliderType = bodyPartCollider.BodyPartColliderType;
 
-                // GO AWAY DONT LOOK AT THIS!!!!
-                // todo: optimize all this.
-                /*
-                Vector3 colliderPos = collider.transform.position;
-                Vector3 dir = colliderPos - explosion.position;
-                Vector3 dirNormalized = dir.normalized;
-                float colliderDistToExplosion = dir.magnitude;
-                float playerDistToExplosion = (player.Position - explosion.position).magnitude;
-                float distanceMult = Mathf.Clamp01(1f - (playerDistToExplosion / explosion.maxDistance));
-                float colliderDistMult = Mathf.Pow(Mathf.Clamp01(1f - (colliderDistToExplosion / explosion.maxDistance)), explosion.damageDropoffMult);
-                */
-
                 // collider
                 Vector3 colliderPos = collider.transform.position;
                 Vector3 colliderDirToExplosion = explosion.position - colliderPos;
@@ -150,7 +138,7 @@ namespace VisibleMines.Components
                 {
                     Helpers.Debug.LogInfo($"Processing body part {bodyPart}, collider distance {colliderDistance}");
 
-                    DamageInfo dmgInfo = new DamageInfo()
+                    DamageInfoStruct dmgInfo = new DamageInfoStruct()
                     {
                         DamageType = EDamageType.Landmine,
                         Damage = finalDamage,
@@ -193,45 +181,6 @@ namespace VisibleMines.Components
             }
         }
     }
-
-    /*
-    public class LaserTrigger : MonoBehaviour
-    {
-        public Transform origin;
-        public float maxDistance = 25f;
-        public LayerMask layerMask;
-
-        private LineRenderer _lineRenderer;
-
-        public event Action OnTriggered;
-
-        public void FixedUpdate()
-        {
-            RaycastHit hit;
-            Vector3 startPos = origin.position;
-            Vector3 forward = origin.TransformDirection(Vector3.forward);
-            Vector3 endPos = origin.position + forward * 250;
-
-            if (Physics.Raycast(startPos, forward, Plugin.claymoreRange.Value, layerMask))
-            {
-                OnTriggered?.Invoke();
-            }
-            else
-            {
-                _lineRenderer.SetPosition(0, origin.position);
-                _lineRenderer.SetPosition(1, startPos + forward * maxDistance);
-            }
-        }
-
-        public void Awake()
-        {
-            origin = gameObject.transform;
-
-            _lineRenderer = gameObject.GetOrAddComponent<LineRenderer>(); // also set material!
-            _lineRenderer.startWidth = 0.01f;
-            _lineRenderer.endWidth = 0.01f;
-        }
-    }*/
 
     public abstract class BaseLandmine : MonoBehaviour, IPhysicsTrigger
     {
@@ -281,7 +230,7 @@ namespace VisibleMines.Components
             gameObject.SetActive(false);
         }
 
-        public virtual void OnHit(DamageInfo damageInfo)
+        public virtual void OnHit(DamageInfoStruct damageInfo)
         {
             Explode();
         }
@@ -310,67 +259,4 @@ namespace VisibleMines.Components
             // umm...
         }
     }
-
-    /*
-    public class Claymore : BaseLandmine
-    {
-        private Transform _wirePos;
-        private LaserTrigger _trigger;
-        private Lazy<ISharedBallisticsCalculator> _ballisticCalculator;
-        private DamageInfo _damageInfo;
-        public MineDirectional.MineSettings MineData;
-
-        public void SetMineDataValue(string name, float value)
-        {
-            // it sucks
-            MineData.GetType().GetField(name)?.SetValueDirect(__makeref(MineData), value);
-        }
-
-        private DamageInfo getDamageInfo()
-        {
-            return new DamageInfo()
-            {
-                DamageType = EDamageType.Landmine,
-                Damage = 0f,
-                ArmorDamage = 0.2f,
-                StaminaBurnRate = 5f,
-                PenetrationPower = 20,
-                Direction = Vector3.zero,
-                Player = null,
-                IsForwardHit = true
-            };
-        }
-
-        public override void OnTriggerEnter(Collider other)
-        {
-            // nothing
-        }
-
-        public override void OnTriggerExit(Collider other)
-        {
-            // nothing
-        }
-
-        public override void Explode()
-        {
-            Singleton<Effects>.Instance.EmitGrenade("Grenade_new", gameObject.transform.position, Vector3.up, 1f);
-            gameObject.SetActive(false);
-            MineData.Explosion(transform.position, null, _ballisticCalculator.Value, null, new Func<DamageInfo>(this.getDamageInfo), 0f, 75f, transform.forward);
-        }
-
-        public override void Awake()
-        {
-            // probably create a single global ballistic calculator?
-            _ballisticCalculator = new Lazy<ISharedBallisticsCalculator>(new Func<ISharedBallisticsCalculator>(MineDirectional.Class321.class321_0.method_0));
-            _wirePos = gameObject.transform.Find("WirePos");
-            if (_wirePos != null )
-            {
-                _trigger = _wirePos.gameObject.AddComponent<LaserTrigger>();
-                _trigger.maxDistance = Plugin.claymoreRange.Value;
-                _trigger.layerMask = LayerMaskClass.PlayerMask;
-                _trigger.OnTriggered += Explode;
-            }
-            base.Awake();
-        }
-    }*/
 }

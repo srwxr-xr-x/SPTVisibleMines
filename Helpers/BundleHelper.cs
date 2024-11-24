@@ -9,7 +9,6 @@ namespace VisibleMines.Helpers
     {
         public static AssetBundle LandmineBundle;
         public static GameObject Landmine_PMN2_Prefab;
-        //public static GameObject Claymore_MON50_Prefab;
 
         public static void LoadAssets()
         {
@@ -20,7 +19,6 @@ namespace VisibleMines.Helpers
             {
                 LandmineBundle = AssetBundle.LoadFromFile(path);
                 Landmine_PMN2_Prefab = (GameObject)LandmineBundle.LoadAsset("Landmine_PMN2_Prefab");
-                //Claymore_MON50_Prefab = (GameObject)LandmineBundle.LoadAsset("Claymore_MON50_Prefab");
                 VisibleMines.Helpers.Debug.LogInfo("Successfully loaded assets!");
             }
             catch (Exception ex) 

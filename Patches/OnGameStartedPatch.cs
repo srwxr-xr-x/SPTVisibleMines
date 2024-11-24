@@ -68,31 +68,6 @@ namespace VisibleMines.Patches
                     }
                 }
             }
-
-            //CLAYMORES
-            /*
-            foreach (MineDirectional mineDirectional in mineDirectionalList)
-            {
-                MineDirectionalColliders[] colliders = mineDirectional.gameObject.GetComponentsInChildren<MineDirectionalColliders>();
-                Transform oldClaymore = mineDirectional.gameObject.transform.Find("mine_mon50");
-
-                if (oldClaymore != null)
-                {
-                    // create mine
-                    GameObject claymore = GameObject.Instantiate(BundleHelper.Claymore_MON50_Prefab, oldClaymore.position, Quaternion.Euler(0, mineDirectional.transform.eulerAngles.y, 0));
-
-                    // add component
-                    Claymore claymoreComponent = claymore.AddComponent<Claymore>();
-                    claymoreComponent.explosionDamage = Plugin.claymoreDamage.Value;
-                    claymoreComponent.explosionRadius = Plugin.claymoreExplosionRange.Value;
-                    claymoreComponent.explosionArmorMult = Plugin.claymoreDamageArmorMult.Value;
-                    claymoreComponent.explosionRadius = 45;
-                    claymoreComponent.MineData = (MineDirectional.MineSettings)typeof(MineDirectional).GetField("_mineData", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(mineDirectional);
-                }
-
-                // GET OUT !!!
-                GameObject.Destroy(mineDirectional.gameObject);
-            }*/
         }
     }
 }

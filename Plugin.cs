@@ -28,16 +28,6 @@ namespace VisibleMines
         // Debug
         public static ConfigEntry<bool> debugEnabled { get; set; }
 
-
-        // Claymores
-        /*
-        public static ConfigEntry<float> claymoreDamage { get; set; }
-        public static ConfigEntry<float> claymoreRange { get; set; }
-        public static ConfigEntry<float> claymoreExplosionRange { get; set; }
-        public static ConfigEntry<float> claymoreDamageArmorMult { get; set; }
-        public static ConfigEntry<float> claymoreDamageAngle { get; set; }
-        */
-
         private void Awake()
         {
             Debug.SetLogger(Logger);
@@ -125,33 +115,6 @@ namespace VisibleMines
                     null,
                     new ConfigurationManagerAttributes() { Order = 890, IsAdvanced = true }
                 ));
-
-            // Claymores
-            /*
-            claymoreDamage = Config.Bind("2. Claymores", "Claymore Damage", 75f, new ConfigDescription(
-                    "Changes the damage of claymores.",
-                    new AcceptableValueRange<float>(0.01f, 250f)
-                ));
-
-            claymoreRange = Config.Bind("2. Claymores", "Claymore Trigger Range", 6f, new ConfigDescription(
-                    "Changes the trigger range of claymores.",
-                    new AcceptableValueRange<float>(1f, 20f)
-                ));
-
-            claymoreExplosionRange = Config.Bind("2. Claymores", "Claymore Explosion Range", 5f, new ConfigDescription(
-                    "Changes the explosion radius of claymores.",
-                    new AcceptableValueRange<float>(0.01f, 15f)
-                ));
-
-            claymoreDamageArmorMult = Config.Bind("2. Claymores", "Claymore Armor Damage Multiplier", 0.5f, new ConfigDescription(
-                    "Changes the armor damage multiplier of claymores.",
-                    new AcceptableValueRange<float>(0.01f, 1f)
-                ));
-
-            claymoreDamageAngle = Config.Bind("2. Claymores", "Claymore Damage Radius", 45f, new ConfigDescription(
-                    "Changes the maximum damage angle of claymores.",
-                    new AcceptableValueRange<float>(5f, 360f)
-                ));*/
 
             MapConfig.LoadMapConfig();
             BundleHelper.LoadAssets();
