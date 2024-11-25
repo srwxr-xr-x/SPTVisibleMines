@@ -6,7 +6,7 @@ using VisibleMines.Patches;
 
 namespace VisibleMines
 {
-    [BepInPlugin("com.pein.visiblemines", "Visible Minefields", "1.1.1")]
+    [BepInPlugin("com.pein.visiblemines", "Visible Minefields", "1.2.0")]
     public class Plugin : BaseUnityPlugin
     {
         // Landmines
@@ -17,7 +17,6 @@ namespace VisibleMines
         public static ConfigEntry<float> landmineDamageArmorMult { get; set; }
         public static ConfigEntry<float> landmineLightBleedDelta { get; set; }
         public static ConfigEntry<float> landmineHeavyBleedDelta { get; set; }
-        public static ConfigEntry<float> landmineFractureDelta { get; set; }
         public static ConfigEntry<float> landmineStaminaBurnRate { get; set; }
 
         // Screen shake
@@ -77,12 +76,6 @@ namespace VisibleMines
                     "Changes the chance for a bleed to occur after an explosion. Chance is calculated per limb. Affected by limb distance from explosion.",
                     new AcceptableValueRange<float>(0f, 1f),
                     new ConfigurationManagerAttributes() { Order = 940 }
-                ));
-
-            landmineFractureDelta = Config.Bind(mineCategory, "Landmine Fracture Chance", 1.0f, new ConfigDescription(
-                    "Changes the chance for a fracture to occur after an explosion. Fractures appear on the limb closest to the explosion. Affected by limb distance from the explosion.",
-                    new AcceptableValueRange<float>(0f, 1f),
-                    new ConfigurationManagerAttributes() { Order = 930 }
                 ));
 
             landmineStaminaBurnRate = Config.Bind(mineCategory, "Landmine Stamina Burn Rate", 1.0f, new ConfigDescription(

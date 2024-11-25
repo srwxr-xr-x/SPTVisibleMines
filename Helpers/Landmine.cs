@@ -1,17 +1,20 @@
 ﻿using Comfort.Common;
 using EFT;
 using EFT.Ballistics;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Management.Instrumentation;
+using System.Reflection;
 using Systems.Effects;
 using UnityEngine;
-using VisibleMines.Helpers;
 using VisibleMines.Patches;
 
 namespace VisibleMines.Components
 {
     public struct ExplosionData
     {
+        public Collider touchedCollider;
         public Vector3 position;
         public float maxDistance;
         public float damage;
@@ -32,67 +35,65 @@ namespace VisibleMines.Components
             EBodyPart.LeftLeg
         ];
 
+        public Player player;
         public float playerDistance;
         public HashSet<EBodyPart> processedLimbs;
-        public Dictionary<EBodyPart, float> limbDistances;
+        public Dictionary<EBodyPart, Vector3> limbPositions;
 
         public PlayerExplosionInfo(float _playerDistance)
         {
             this.playerDistance = _playerDistance;
             processedLimbs = new HashSet<EBodyPart>();
-            limbDistances = new Dictionary<EBodyPart, float>();
+            limbPositions = new Dictionary<EBodyPart, Vector3>();
         }
 
-        public float GetLimbDistance(EBodyPart bodyPart)
+        public float GetLimbDistance(EBodyPart bodyPart, Vector3 position)
         {
-            return limbDistances[bodyPart];
+            return Vector3.Distance(limbPositions[bodyPart], position);
         }
 
-        public EBodyPart GetClosestBodyPart()
+        public EBodyPart GetClosestFracturableBodyPart(Vector3 position)
         {
-            return limbDistances.Aggregate((a, b) =>
+            EBodyPart closestBodyPart = default;
+            float minDistance = float.MaxValue;
+
+            foreach (EBodyPart bodyPart in _fracturableLimbs)
             {
-                return a.Value < b.Value ? a : b;
-            }).Key;
-        }
+                float distance = GetLimbDistance(bodyPart, position);
+                if (distance < minDistance)
+                {
+                    minDistance = distance;
+                    closestBodyPart = bodyPart;
+                }
+            }
 
-        public EBodyPart GetClosestFracturableBodyPart()
-        {
-            return limbDistances
-                .Where(x => _fracturableLimbs.Contains(x.Key))
-                .Aggregate((a, b) => { return a.Value < b.Value ? a : b; })
-                .Key;
+            return closestBodyPart;
         }
     }
 
     public class Explosion
     {
-        private static (Player, EBodyPart) GetClosestPlayerAndLimb(Dictionary<Player, PlayerExplosionInfo> _players)
-        {
-            Player closestPlayer = null;
-            float closestDistance = float.MaxValue;
-
-            foreach (KeyValuePair<Player, PlayerExplosionInfo> playerInfo in _players)
-            {
-                if (playerInfo.Value.playerDistance < closestDistance)
-                {
-                    closestPlayer = playerInfo.Key;
-                    closestDistance = playerInfo.Value.playerDistance;
-                }
-            }
-
-            EBodyPart closestLimb = closestPlayer == null ? default : _players[closestPlayer].GetClosestFracturableBodyPart();
-
-            return (closestPlayer, closestLimb);
-        }
-
         public static void CreateLandmineExplosion(ExplosionData explosion)
         {
             // processed limbs for players
             Dictionary<Player, PlayerExplosionInfo> processedPlayers = new Dictionary<Player, PlayerExplosionInfo>();
 
-            // effect
+            // explosion effect
             Singleton<Effects>.Instance.EmitGrenade(explosion.effectName, explosion.position, Vector3.up, 1f);
+
+            // apply fracture to the limb that touched the mine
+            Collider[] nearColliders = Physics.OverlapSphere(explosion.position, 0.2f);
+            foreach (Collider collider in nearColliders)
+            {
+                Player player = collider.GetComponentInParent<Player>();
+                if (player == null) continue;
+
+                BodyPartCollider bodyPartCollider = collider.GetComponent<BodyPartCollider>();
+                if (bodyPartCollider == null) continue;
+
+                player.ActiveHealthController.DoFracture(bodyPartCollider.BodyPartType);
+                break;
+            }
 
             // damage
             Collider[] colliders = Physics.OverlapSphere(explosion.position, explosion.maxDistance);
@@ -126,14 +127,28 @@ namespace VisibleMines.Components
                 // if first damage
                 if (!playerProcessedExists)
                 {
+                    // add player to processedPlayers
                     float playerDistToExplosion = playerDirToExplosion.magnitude;
                     processedPlayers.Add(player, new PlayerExplosionInfo(playerDistToExplosion));
 
+                    // apply screen effects
                     player.ActiveHealthController.DoContusion(20f * playerDistanceMult, playerDistanceMult);
                     player.ActiveHealthController.DoDisorientation(5f * playerDistanceMult);
                     player.ProceduralWeaponAnimation.ForceReact.AddForce(playerDirToExplosion.normalized, playerDistanceMult * Plugin.screenShakeIntensityAmount.Value, Plugin.screenShakeIntensityWeapon.Value, Plugin.screenShakeIntensityCamera.Value);
+
+                    // apply tinnitus
+                    AudioClip tinnitusAudio = (AudioClip)typeof(BetterAudio).GetField("_tinnitus", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(Singleton<BetterAudio>.Instance);
+                    if (tinnitusAudio != null)
+                    {
+                        Singleton<BetterAudio>.Instance.StartTinnitusEffect(7f, tinnitusAudio);
+                    }
+                    else
+                    {
+                        Helpers.Debug.LogWarning("couldn't get tinnitus audio");
+                    }
                 }
 
+                // loop through all the limbs
                 if (explosion.targetBodyParts.Contains(bodyPart) && !processedPlayers[player].processedLimbs.Contains(bodyPart))
                 {
                     Helpers.Debug.LogInfo($"Processing body part {bodyPart}, collider distance {colliderDistance}");
@@ -158,26 +173,9 @@ namespace VisibleMines.Components
                     DoFracturePatch.SetIgnoreNextFracture(true);
                     player.ApplyDamageInfo(dmgInfo, bodyPart, colliderType, 0.0f);
                     DoFracturePatch.SetIgnoreNextFracture(false);
-
-                    // only add parts that can be fractured (this will be important later!)
-                    if (bodyPart != EBodyPart.Chest || bodyPart != EBodyPart.Stomach || bodyPart != EBodyPart.Head)
-                    {
-                        processedPlayers[player].limbDistances.Add(bodyPart, colliderDistance);
-                    }
                 }
 
                 processedPlayers[player].processedLimbs.Add(bodyPart);
-            }
-
-            (Player closestPlayer, EBodyPart closestBodyPart) = GetClosestPlayerAndLimb(processedPlayers);
-
-            if (closestPlayer != null)
-            {
-                float distanceFromExplosion = (closestPlayer.Position - explosion.position).magnitude;
-                if (distanceFromExplosion < 1f && Random.Range(0f, 1f) < Plugin.landmineFractureDelta.Value)
-                {
-                    closestPlayer.ActiveHealthController.DoFracture(closestBodyPart);
-                }
             }
         }
     }
@@ -205,10 +203,11 @@ namespace VisibleMines.Components
             }
         }
 
-        public virtual void Explode()
+        public virtual void Explode(Collider otherCollider)
         {
             ExplosionData data = new ExplosionData()
             {
+                touchedCollider = otherCollider,
                 position = gameObject.transform.position,
                 effectDir = Vector3.up,
                 effectName = "Grenade_new",
@@ -232,12 +231,12 @@ namespace VisibleMines.Components
 
         public virtual void OnHit(DamageInfoStruct damageInfo)
         {
-            Explode();
+            Explode(null);
         }
 
         public virtual void Awake()
         {
-            //Debug.LogInfo($"Created {this.name} at {this.gameObject.transform.position}");
+            Helpers.Debug.LogInfo($"Created {this.name} at {this.gameObject.transform.position}");
             CreateBallisticCollider();
         }
 
@@ -251,7 +250,7 @@ namespace VisibleMines.Components
     {
         public override void OnTriggerEnter(Collider other)
         {
-            Explode();
+            Explode(other);
         }
 
         public override void OnTriggerExit(Collider other)
