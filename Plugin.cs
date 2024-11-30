@@ -78,26 +78,26 @@ namespace VisibleMines
                     new ConfigurationManagerAttributes() { Order = 940 }
                 ));
 
-            landmineStaminaBurnRate = Config.Bind(mineCategory, "Landmine Stamina Burn Rate", 1.0f, new ConfigDescription(
+            landmineStaminaBurnRate = Config.Bind(mineCategory, "Landmine Stamina Burn Rate", 50f, new ConfigDescription(
                     "Changes the chance for a fracture to occur after an explosion. Fractures appear on the limb closest to the explosion. Affected by limb distance from the explosion.",
                     null,
-                    new ConfigurationManagerAttributes() { Order = 929 }
+                    new ConfigurationManagerAttributes() { Order = 930 }
                 ));
 
             // Explosion screen shake settings
-            screenShakeIntensityAmount = Config.Bind(visualCategory, "Overall Shake Intensity", 1.0f, new ConfigDescription(
+            screenShakeIntensityAmount = Config.Bind(visualCategory, "Overall Shake Intensity", 1f, new ConfigDescription(
                     "Changes the overall shake intensity.",
                     null,
                     new ConfigurationManagerAttributes() { Order = 920 }
                 ));
 
-            screenShakeIntensityWeapon = Config.Bind(visualCategory, "Weapon Shake Intensity", 0.25f, new ConfigDescription(
+            screenShakeIntensityWeapon = Config.Bind(visualCategory, "Weapon Shake Intensity", 1f, new ConfigDescription(
                     "Changes the weapon shake intensity.",
                     null,
                     new ConfigurationManagerAttributes() { Order = 910 }
                 ));
 
-            screenShakeIntensityCamera = Config.Bind(visualCategory, "Camera Shake Intensity", 1.0f, new ConfigDescription(
+            screenShakeIntensityCamera = Config.Bind(visualCategory, "Camera Shake Intensity", 3f, new ConfigDescription(
                     "Changes the camera shake intensity.",
                     null,
                     new ConfigurationManagerAttributes() { Order = 900 }
