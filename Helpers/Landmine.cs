@@ -1,11 +1,11 @@
 ﻿using Comfort.Common;
 using EFT;
 using EFT.Ballistics;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Systems.Effects;
 using UnityEngine;
-using VisibleMines.Helpers;
 using VisibleMines.Patches;
 
 namespace VisibleMines.Components
@@ -24,7 +24,7 @@ namespace VisibleMines.Components
     public class PlayerExplosionInfo
     {
         // weird
-        private EBodyPart[] _fracturableLimbs = 
+        private EBodyPart[] _fracturableLimbs =
         [
             EBodyPart.RightArm,
             EBodyPart.LeftArm,
@@ -59,39 +59,28 @@ namespace VisibleMines.Components
         public EBodyPart GetClosestFracturableBodyPart()
         {
             return limbDistances
-                .Where(x => _fracturableLimbs.Contains(x.Key))
-                .Aggregate((a, b) => { return a.Value < b.Value ? a : b; })
-                .Key;
+                .Where(x => _fracturableLimbs.Contains(x.Key)) // is fracturable?
+                .Aggregate((a, b) => { return a.Value < b.Value ? a : b; }) // sort by distance
+                .Key; // get the bodypart
+        }
+
+        public EBodyPart GetClosestLeg() // could have just added a filter but idc!!!!
+        {
+            return limbDistances
+                .Where(x => x.Key == EBodyPart.RightLeg || x.Key == EBodyPart.LeftLeg) // is.. leg?
+                .Aggregate((a, b) => { return a.Value < b.Value ? a : b; }) // sort by distance
+                .Key; // get the bodypart
         }
     }
 
     public class Explosion
     {
-        private static (Player, EBodyPart) GetClosestPlayerAndLimb(Dictionary<Player, PlayerExplosionInfo> _players)
-        {
-            Player closestPlayer = null;
-            float closestDistance = float.MaxValue;
-
-            foreach (KeyValuePair<Player, PlayerExplosionInfo> playerInfo in _players)
-            {
-                if (playerInfo.Value.playerDistance < closestDistance)
-                {
-                    closestPlayer = playerInfo.Key;
-                    closestDistance = playerInfo.Value.playerDistance;
-                }
-            }
-
-            EBodyPart closestLimb = closestPlayer == null ? default : _players[closestPlayer].GetClosestFracturableBodyPart();
-
-            return (closestPlayer, closestLimb);
-        }
-
         public static void CreateLandmineExplosion(ExplosionData explosion)
         {
             // processed limbs for players
             Dictionary<Player, PlayerExplosionInfo> processedPlayers = new Dictionary<Player, PlayerExplosionInfo>();
 
-            // effect
+            // explosion effect
             Singleton<Effects>.Instance.EmitGrenade(explosion.effectName, explosion.position, Vector3.up, 1f);
 
             // damage
@@ -106,18 +95,6 @@ namespace VisibleMines.Components
 
                 EBodyPart bodyPart = bodyPartCollider.BodyPartType;
                 EBodyPartColliderType colliderType = bodyPartCollider.BodyPartColliderType;
-
-                // GO AWAY DONT LOOK AT THIS!!!!
-                // todo: optimize all this.
-                /*
-                Vector3 colliderPos = collider.transform.position;
-                Vector3 dir = colliderPos - explosion.position;
-                Vector3 dirNormalized = dir.normalized;
-                float colliderDistToExplosion = dir.magnitude;
-                float playerDistToExplosion = (player.Position - explosion.position).magnitude;
-                float distanceMult = Mathf.Clamp01(1f - (playerDistToExplosion / explosion.maxDistance));
-                float colliderDistMult = Mathf.Pow(Mathf.Clamp01(1f - (colliderDistToExplosion / explosion.maxDistance)), explosion.damageDropoffMult);
-                */
 
                 // collider
                 Vector3 colliderPos = collider.transform.position;
@@ -138,19 +115,23 @@ namespace VisibleMines.Components
                 // if first damage
                 if (!playerProcessedExists)
                 {
+                    // add player to processedPlayers
                     float playerDistToExplosion = playerDirToExplosion.magnitude;
+                    Helpers.Debug.LogInfo($"player distance to explosion: {playerDistToExplosion}");
                     processedPlayers.Add(player, new PlayerExplosionInfo(playerDistToExplosion));
 
+                    // apply screen effects
                     player.ActiveHealthController.DoContusion(20f * playerDistanceMult, playerDistanceMult);
                     player.ActiveHealthController.DoDisorientation(5f * playerDistanceMult);
                     player.ProceduralWeaponAnimation.ForceReact.AddForce(playerDirToExplosion.normalized, playerDistanceMult * Plugin.screenShakeIntensityAmount.Value, Plugin.screenShakeIntensityWeapon.Value, Plugin.screenShakeIntensityCamera.Value);
                 }
 
+                // loop through all the limbs
                 if (explosion.targetBodyParts.Contains(bodyPart) && !processedPlayers[player].processedLimbs.Contains(bodyPart))
                 {
                     Helpers.Debug.LogInfo($"Processing body part {bodyPart}, collider distance {colliderDistance}");
 
-                    DamageInfo dmgInfo = new DamageInfo()
+                    DamageInfoStruct dmgInfo = new DamageInfoStruct()
                     {
                         DamageType = EDamageType.Landmine,
                         Damage = finalDamage,
@@ -181,59 +162,31 @@ namespace VisibleMines.Components
                 processedPlayers[player].processedLimbs.Add(bodyPart);
             }
 
-            (Player closestPlayer, EBodyPart closestBodyPart) = GetClosestPlayerAndLimb(processedPlayers);
-
-            if (closestPlayer != null)
+            foreach (KeyValuePair<Player, PlayerExplosionInfo> kvp in processedPlayers)
             {
-                float distanceFromExplosion = (closestPlayer.Position - explosion.position).magnitude;
+                // holy crap i love repeating code!
+                Player player = kvp.Key;
+                PlayerExplosionInfo explosionInfo = kvp.Value;
 
-                if (distanceFromExplosion < 1f && Random.Range(0f, 1f) < Plugin.landmineFractureDelta.Value)
+                Vector3 playerDirToExplosion = kvp.Key.Position - explosion.position;
+                float playerDistance = playerDirToExplosion.magnitude;
+
+                if (playerDistance > 1f) continue; // too far..
+
+                bool isPlayerStanding = player.IsInPronePose;
+                if (!isPlayerStanding)
                 {
-                    closestPlayer.ActiveHealthController.DoFracture(closestBodyPart);
-                    Helpers.Debug.LogInfo($"applying fracture to {closestBodyPart}");
+                    EBodyPart closestBodyPart = explosionInfo.GetClosestLeg();
+                    player.ActiveHealthController.DoFracture(closestBodyPart);
+                }
+                else
+                {
+                    EBodyPart closestBodyPart = explosionInfo.GetClosestFracturableBodyPart();
+                    player.ActiveHealthController.DoFracture(closestBodyPart);
                 }
             }
         }
     }
-
-    /*
-    public class LaserTrigger : MonoBehaviour
-    {
-        public Transform origin;
-        public float maxDistance = 25f;
-        public LayerMask layerMask;
-
-        private LineRenderer _lineRenderer;
-
-        public event Action OnTriggered;
-
-        public void FixedUpdate()
-        {
-            RaycastHit hit;
-            Vector3 startPos = origin.position;
-            Vector3 forward = origin.TransformDirection(Vector3.forward);
-            Vector3 endPos = origin.position + forward * 250;
-
-            if (Physics.Raycast(startPos, forward, Plugin.claymoreRange.Value, layerMask))
-            {
-                OnTriggered?.Invoke();
-            }
-            else
-            {
-                _lineRenderer.SetPosition(0, origin.position);
-                _lineRenderer.SetPosition(1, startPos + forward * maxDistance);
-            }
-        }
-
-        public void Awake()
-        {
-            origin = gameObject.transform;
-
-            _lineRenderer = gameObject.GetOrAddComponent<LineRenderer>(); // also set material!
-            _lineRenderer.startWidth = 0.01f;
-            _lineRenderer.endWidth = 0.01f;
-        }
-    }*/
 
     public abstract class BaseLandmine : MonoBehaviour, IPhysicsTrigger
     {
@@ -283,14 +236,14 @@ namespace VisibleMines.Components
             gameObject.SetActive(false);
         }
 
-        public virtual void OnHit(DamageInfo damageInfo)
+        public virtual void OnHit(DamageInfoStruct damageInfo)
         {
             Explode();
         }
 
         public virtual void Awake()
         {
-            //Debug.LogInfo($"Created {this.name} at {this.gameObject.transform.position}");
+            Helpers.Debug.LogInfo($"Created {this.name} at {this.gameObject.transform.position}");
             CreateBallisticCollider();
         }
 
@@ -312,67 +265,4 @@ namespace VisibleMines.Components
             // umm...
         }
     }
-
-    /*
-    public class Claymore : BaseLandmine
-    {
-        private Transform _wirePos;
-        private LaserTrigger _trigger;
-        private Lazy<ISharedBallisticsCalculator> _ballisticCalculator;
-        private DamageInfo _damageInfo;
-        public MineDirectional.MineSettings MineData;
-
-        public void SetMineDataValue(string name, float value)
-        {
-            // it sucks
-            MineData.GetType().GetField(name)?.SetValueDirect(__makeref(MineData), value);
-        }
-
-        private DamageInfo getDamageInfo()
-        {
-            return new DamageInfo()
-            {
-                DamageType = EDamageType.Landmine,
-                Damage = 0f,
-                ArmorDamage = 0.2f,
-                StaminaBurnRate = 5f,
-                PenetrationPower = 20,
-                Direction = Vector3.zero,
-                Player = null,
-                IsForwardHit = true
-            };
-        }
-
-        public override void OnTriggerEnter(Collider other)
-        {
-            // nothing
-        }
-
-        public override void OnTriggerExit(Collider other)
-        {
-            // nothing
-        }
-
-        public override void Explode()
-        {
-            Singleton<Effects>.Instance.EmitGrenade("Grenade_new", gameObject.transform.position, Vector3.up, 1f);
-            gameObject.SetActive(false);
-            MineData.Explosion(transform.position, null, _ballisticCalculator.Value, null, new Func<DamageInfo>(this.getDamageInfo), 0f, 75f, transform.forward);
-        }
-
-        public override void Awake()
-        {
-            // probably create a single global ballistic calculator?
-            _ballisticCalculator = new Lazy<ISharedBallisticsCalculator>(new Func<ISharedBallisticsCalculator>(MineDirectional.Class321.class321_0.method_0));
-            _wirePos = gameObject.transform.Find("WirePos");
-            if (_wirePos != null )
-            {
-                _trigger = _wirePos.gameObject.AddComponent<LaserTrigger>();
-                _trigger.maxDistance = Plugin.claymoreRange.Value;
-                _trigger.layerMask = LayerMaskClass.PlayerMask;
-                _trigger.OnTriggered += Explode;
-            }
-            base.Awake();
-        }
-    }*/
 }
