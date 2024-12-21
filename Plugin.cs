@@ -25,18 +25,12 @@ namespace VisibleMines
         public static ConfigEntry<float> screenShakeIntensityWeapon { get; set; }
         public static ConfigEntry<float> screenShakeIntensityCamera { get; set; }
 
+        // Minefields
+        public static ConfigEntry<bool> minefieldsAddCustom { get; set; }
+        public static ConfigEntry<bool> minefieldsAiIgnore { get; set; }
+
         // Debug
         public static ConfigEntry<bool> debugEnabled { get; set; }
-
-
-        // Claymores
-        /*
-        public static ConfigEntry<float> claymoreDamage { get; set; }
-        public static ConfigEntry<float> claymoreRange { get; set; }
-        public static ConfigEntry<float> claymoreExplosionRange { get; set; }
-        public static ConfigEntry<float> claymoreDamageArmorMult { get; set; }
-        public static ConfigEntry<float> claymoreDamageAngle { get; set; }
-        */
 
         private void Awake()
         {
@@ -44,7 +38,8 @@ namespace VisibleMines
 
             string mineCategory = "1. Landmines";
             string visualCategory = "2. Screen Shake";
-            string debugCategory = "3. Debug";
+            string customCategory = "3. Minefields";
+            string debugCategory = "4. Debug";
 
             // Landmine settings
             landminePosOffset = Config.Bind(mineCategory, "Landmine Pos Offset", 0.01f, new ConfigDescription(
@@ -120,40 +115,28 @@ namespace VisibleMines
                     new ConfigurationManagerAttributes() { Order = 900 }
                 ));
 
+            // Custom minefields
+            minefieldsAddCustom = Config.Bind(customCategory, "Create Additional Minefields", false, new ConfigDescription(
+                    "Adds additional minefields in certain maps. Watch your step!",
+                    null,
+                    new ConfigurationManagerAttributes() { Order = 890 }
+                ));
+
+            minefieldsAiIgnore = Config.Bind(customCategory, "AI Ignores Minefields", true, new ConfigDescription(
+                    "Sets if AI should pathfind around minefields.",
+                    null,
+                    new ConfigurationManagerAttributes() { Order = 880 }
+                ));
+
+            // Debug
             debugEnabled = Config.Bind(debugCategory, "Enable Debug", false, new ConfigDescription(
                     "Enables debug mode",
                     null,
-                    new ConfigurationManagerAttributes() { Order = 890, IsAdvanced = true }
+                    new ConfigurationManagerAttributes() { Order = 1, IsAdvanced = true }
                 ));
-
-            // Claymores
-            /*
-            claymoreDamage = Config.Bind("2. Claymores", "Claymore Damage", 75f, new ConfigDescription(
-                    "Changes the damage of claymores.",
-                    new AcceptableValueRange<float>(0.01f, 250f)
-                ));
-
-            claymoreRange = Config.Bind("2. Claymores", "Claymore Trigger Range", 6f, new ConfigDescription(
-                    "Changes the trigger range of claymores.",
-                    new AcceptableValueRange<float>(1f, 20f)
-                ));
-
-            claymoreExplosionRange = Config.Bind("2. Claymores", "Claymore Explosion Range", 5f, new ConfigDescription(
-                    "Changes the explosion radius of claymores.",
-                    new AcceptableValueRange<float>(0.01f, 15f)
-                ));
-
-            claymoreDamageArmorMult = Config.Bind("2. Claymores", "Claymore Armor Damage Multiplier", 0.5f, new ConfigDescription(
-                    "Changes the armor damage multiplier of claymores.",
-                    new AcceptableValueRange<float>(0.01f, 1f)
-                ));
-
-            claymoreDamageAngle = Config.Bind("2. Claymores", "Claymore Damage Radius", 45f, new ConfigDescription(
-                    "Changes the maximum damage angle of claymores.",
-                    new AcceptableValueRange<float>(5f, 360f)
-                ));*/
 
             MapConfig.LoadMapConfig();
+            MapConfig.LoadMapConfigCustom();
             BundleHelper.LoadAssets();
 
             new DoFracturePatch().Enable();

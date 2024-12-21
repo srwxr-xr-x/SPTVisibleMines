@@ -182,11 +182,16 @@ namespace VisibleMines.Components
             }
 
             (Player closestPlayer, EBodyPart closestBodyPart) = GetClosestPlayerAndLimb(processedPlayers);
-            float distanceFromExplosion = (closestPlayer.Position - explosion.position).magnitude;
 
-            if (distanceFromExplosion < 1f && Random.Range(0f, 1f) < Plugin.landmineFractureDelta.Value)
+            if (closestPlayer != null)
             {
-                closestPlayer.ActiveHealthController.DoFracture(closestBodyPart);
+                float distanceFromExplosion = (closestPlayer.Position - explosion.position).magnitude;
+
+                if (distanceFromExplosion < 1f && Random.Range(0f, 1f) < Plugin.landmineFractureDelta.Value)
+                {
+                    closestPlayer.ActiveHealthController.DoFracture(closestBodyPart);
+                    Helpers.Debug.LogInfo($"applying fracture to {closestBodyPart}");
+                }
             }
         }
     }

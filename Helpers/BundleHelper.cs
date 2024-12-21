@@ -8,19 +8,25 @@ namespace VisibleMines.Helpers
     public class BundleHelper
     {
         public static AssetBundle LandmineBundle;
+        public static AssetBundle WarningsBundle;
+
         public static GameObject Landmine_PMN2_Prefab;
-        //public static GameObject Claymore_MON50_Prefab;
+        public static GameObject Warning_Plywood_Prefab;
 
         public static void LoadAssets()
         {
             var folder = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            string path = $"{folder}\\landmineassets";
+            string pathMineAssets = $"{folder}\\landmineassets";
+            string pathWarningAssets = $"{folder}\\warningassets";
 
             try
             {
-                LandmineBundle = AssetBundle.LoadFromFile(path);
+                LandmineBundle = AssetBundle.LoadFromFile(pathMineAssets);
                 Landmine_PMN2_Prefab = (GameObject)LandmineBundle.LoadAsset("Landmine_PMN2_Prefab");
-                //Claymore_MON50_Prefab = (GameObject)LandmineBundle.LoadAsset("Claymore_MON50_Prefab");
+
+                WarningsBundle = AssetBundle.LoadFromFile(pathWarningAssets);
+                Warning_Plywood_Prefab = (GameObject)WarningsBundle.LoadAsset("warning_plywood");
+
                 VisibleMines.Helpers.Debug.LogInfo("Successfully loaded assets!");
             }
             catch (Exception ex) 
